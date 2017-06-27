@@ -1,0 +1,27 @@
+* Overview of Concept
+- Carry around metadata about code: docs, tests, specs, types
+- Allow inlining of code w/ slight abstraction: 
+   + -> hi-prec-add; or
+   + -> (defn hi-prec-add (...))
+- Tangle out tests, docs, etc
+- All info should be machine readable for possible compiler optimization
+
+* Short Term Goal (Tuesday or Wednesday?)
+** DONE cmd at point opens a buffer, 
+** TODO which has the user-defined/preset fields it reads from a config file
+** TODO allow for changing of names
+** TODO represent layer components as labeled sexprs i.e. (\SPEC-CHAR (:prop1 val1) ...) and scan for them when opening
+* Longer Term Goals
+- Untangling/unfolding
+- Compiler/Evaluator use of metadata like types
+
+* If it's Monday and I don't remember what to do:
+- read an elisp primer
+- read org source for formatting/best practices
+- start writing code
+
+* Spec
+- if annotated sexpr is expanded separately, editing the separate buffer should edit the original file
+- if the annotated sexpr is not expanded but is shown in the original file, editing the associated text should edit the annotated sexpr
+- if the annotated sexpr is expanded and shown, editing either should edit both
+- for now, good fields would be DOC, BODY, and NAME

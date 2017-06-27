@@ -1,0 +1,31 @@
+* This is a title
+
+#+NAME: square
+#+BEGIN_SRC python :var x=0
+  return x * x
+#+END_SRC
+
+#+call: square(6)
+
+#+RESULTS:
+: 36
+
+#+name: tbl-example-data
+#+BEGIN_SRC python
+  import random
+  return [random.randint(0, 10) for i in range(10)]
+#+END_SRC
+
+#+RESULTS: tbl-example-data
+| 3 | 5 | 6 | 3 | 0 | 0 | 9 | 8 | 0 | 6 |
+
+#+name: sum
+#+BEGIN_SRC python :var x=""
+  return sum(x)
+#+END_SRC
+
+#+tblname: summaries
+| mean |
+|------|
+|   42 |
+#+TBLFM: $1='(org-sbe "sum" (x "tbl-example-data"))

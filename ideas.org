@@ -1,0 +1,138 @@
+* Old Ideas:
+** Sussman's Ideas
+*** Abstract Representation of Programs
+- Can keep track of code and annotations of it.
+- Ex: Scheme with type annotations
+*** Emacs Tool
+- UI: Can selectively show annotations, explore layers of program
+- Aware of what language and encoding it's working with
+- Perform transformations, analysis, transpilation
+*** Universal Transpiler
+- Can transform code + annotations to a different language + annotations
+- Can leverage Emacs' understanding of languages (TAGS, syntax highlighting, syntax navigation, linting, etc.)
+
+** Other Ideas
+*** Literate Programming
+- could be closely related to a way to do layered programming
+- http://www.literateprogramming.com/knuthweb.pdf
+*** XML as abstract representation?
+http://www.o-xml.org/documentation/layered-programming.html
+*** Coq - abstract processing
+https://coq.inria.fr/a-short-introduction-to-coq
+http://plv.csail.mit.edu/bedrock/
+http://adam.chlipala.net/
+
+** Questions
+*** What is the best way to read a program?
+My thoughts: literate programming is nice but aren't always appropriate for large or self-documenting programs. Also doesn't seem that nice to maintain.
+*** Is it ok for the program only to be readable in emacs?
+*** How to input data about piece of program? Labeled fields? User-defined? How extensible?
+*** What's the use case?
+Just carry metadata or allow for alternative structuring of programs?
+*** What's the philosophy?
+*** Module reuse/scope management? How to use other people's code?
+How to reuse function from a different layer or branch?
+** Literate Programming
+*** Pros
+- Focus on readibility of code
+- Optimized for reader, not the computer
+- Potentially allows for rapid skimming (e.g., a good Table of Contents)
+*** Cons
+- Have to maintain prose
+- Hard to modify someone else's code
+** Philosophy
+*** We understand programs by layers of abstraction, so we should read and write them the same way. - long term
+*** Less is more.
+** Use case:
+- Move point to a token, use a command to "expand" it
+- Modify internals and extra information of the token at point
+- Can repeat this in the internals of the token
+*** Evaluate separately or tangle then evaluate?
+** Inspiration
+- Literate Programming
+- clojure.spec - "docs are not enough"
+
+** example:
+#+BEGIN_SRC clojure :results verbatim
+  (defn main []
+    (send
+     (process
+      (receive-request))))
+
+  ;; (overlays-in 0 (point-max))
+#+END_SRC
+
+#+BEGIN_SRC elisp
+  (mapcar (lambda (ol) (overlay-properties ol)) (overlays-in 0 (point-max)))
+#+END_SRC
+
+*** w/ all info inline (including unsupported features such as types)
+(defn <Request> receive-request [List<Request> requests]
+  "Consumes a request from the request queue. This is where documentation
+   would normally live."
+  (<body code>
+   (...)
+   (...)))
+
+*** receive-request
+"Receives a queued request from pool of requests."
+**** Signature
+<List<Request>> -> Request
+**** Body
+(case (prop-of request)
+      prop-one (...)
+      prop-two (...)
+      ...      (...))
+**** Unit Tests
+(...)
+
+* Notes on Architectural Software
+** "Concepts" - iPad App
+- layers managed on the side like in photoshop
+- order of layers affects relative visibility
+- can toggle visibility of layers and "lock" them
+- naming of layers is important for UX
+- can move elements between layers
+*** Layer manipulations:
+create
+rename
+reorder
+merge
+delete
+lock
+hide/show
+select everything in a layer
+change opacity
+"focus mode" (like emacs narrowing)
+*** Stages in designing a bird feeder:
+1. sketch from reference
+2. get basic shape
+3. add details and definition
+4. add shadows
+5. add background, put into context
+** "ArchiCAD" - Desktop App
+- layers - "categories" of elements; every element exists in a layer
+- layers are specific to a project and derived from a template
+- "layer combinations" control locking and visibility of several layers 
+simultaneously; one combination might have lots of detail for the architect,
+while another might have the basics + furniture for the client
+- separate layer editor window
+* New Ideas:
+- differentiate layers by labeling them e.g. ;;*Tests:
+- look at lispy-extract-block for code generation and placement
+- create a UI for toggling layer visibility
+* Talk with Sussman:
+- make a =layer= macro which takes a name and some parameters
+- do code folding, analysis, whatever with that
+- should be general and point to other files, urls, places in file, etc.
+- add snippet for speed?
+** Examples
+#+BEGIN_SRC scheme
+  (define (fft data)
+    (layer spec (floating vector data))
+    (layer precision (+ multiple))        ; how would scope function with this 
+                                          ; macro?
+                                          ; can I change the behavior? 
+    (+ . . .)
+    ...)
+#+END_SRC

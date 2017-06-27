@@ -1,0 +1,29 @@
+* Interface
+** TODO Create a minor mode for layered programming
+** TODO Create a minor mode for editing layers
+** TODO Edit buffer should use minor mode
+** TODO Edit buffer should close and save with C-x C-s
+** TODO Edit /frame/ should close after saving
+** TODO Find good keybindings
+** TODO Support different window configurations
+** TODO Highlight symbol being annotated
+
+* Functionality
+** TODO What happens when you exit layered-mode?
+** TODO Buffer-to-buffer movement of layers -- how are layers inserted and hidden?
+** TODO Selectively hide/show layers
+** TODO Escape contents of edit buffer
+
+* Extensibility
+** TODO Configurable layers
+** TODO Configurable behavior for layers (i.e., easy-to-use hooks, etc.)
+
+* Persistence
+** TODO Editing name field should edit src buffer
+** TODO Write layers to file on save
+** TODO Read layers from file on load
+
+* Integration
+** TODO Tangle out src code with optional layers of annotation
+** TODO Tangle out specific layers separately/together
+** TODO Automatically run tests/spec w/ key shortcut
