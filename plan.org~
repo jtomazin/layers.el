@@ -1,3 +1,0 @@
-* Overview of Concept
-- Carry around metadata about code: docs, tests, specs, types
-- Allow inlining of code w/ slight abstraction: + -> hi-prec-add; + -> (defn hi-prec-add (...))
