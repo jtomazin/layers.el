@@ -1,5 +1,7 @@
 ;;; layers.el --- Layered Programming in Emacs -*- lexical-binding: t; -*-
 
+;; fixme: this breaks `query-replace'
+
 (require 'dash)
 
 (define-minor-mode layered-mode
@@ -12,8 +14,16 @@
       (layers--initialize)
     (layers--tear-down)))
 
-(defvar layer-labels (list "test" "doc")
+(defvar layer-labels (list "test" "doc" "spec")
   "the names of all the labels of layers")
+
+(defcustom layers-colored-summaries t
+  "Hidden layer summaries are colorized if this is non-nil; otherwise
+they are formatted as comments.")
+
+(defcustom layers-check-spec t
+  "Check specs on each invocation if this is non-nil. This will have
+a significant performance impact.")
 
 ;; This macro is the basic construct of layered programs.
 ;;  A user intersperses her program with these decorations
@@ -35,15 +45,40 @@
                      expr))
                  body)))
     (doc `(concat ,@body))
-    (spec ())                             ; clojure could use metadata
-    (t    nil)))
+    (spec (let* ((signature (car body)) ; clojure could use metadata
+                 (arg-spec (car signature))
+                 (r-spec (car (last signature))))
+            `(progn
+               (advice-remove ',symbol 'aspec)
+               (advice-remove ',symbol 'bspec)
+               (advice-add ',symbol :before
+                           (lambda (&rest args)
+                             (if layers-check-spec
+                                 (-each (-zip '(,@arg-spec) args)
+                                   (lambda (p)
+                                     (assert (funcall (car p) (cdr p)) nil
+                                             "Expected %s, got %s of type %s"
+                                             (car p) (cdr p) (type-of (cdr p)))))))
+                           '((name . bspec)))
+               (advice-add ',symbol :filter-return
+                           (lambda (r)
+                             (if layers-check-spec
+                                 (assert (funcall #',r-spec r) nil
+                                         "Expected %s, got %s of type %s"
+                                         ',r-spec r (type-of r)))
+                             r)
+                           '((name . aspec))))))
+    (t nil)))
+
+(defun simplefun (str num)
+  (make-list num str))
+
+(simplefun "a" 3)
+
+(layer spec simplefun
+  ((stringp integerp) -> listp))
 
 (defconst layers--macro-regex "\(layer[[:space:]\n]")
-
-;; (layer test example-fn
-;;   ("a" -> 1)
-;;   ("b" -> 2)
-;;   ("c" -> 3))
 
 (layer test layers--macro-regex
   (string-match layers--macro-regex "(layer ")
@@ -63,14 +98,8 @@ test")
   "Returns a string of the N-th s-expression in the s-expression
 starting at BEG. Zero-indexed."
   (let ((end (scan-sexps beg 1)))
-    (symbol-name (nth n (car (read-from-string (buffer-substring beg end))))))
-  ;; (let ((beg (1+ pos)))
-  ;;   (if (= n 0)
-  ;;       (buffer-substring-no-properties pos
-  ;;                                       (scan-sexps beg n))
-  ;;     (buffer-substring-no-properties (1+ (scan-sexps beg n))
-  ;;                                     (scan-sexps beg (1+ n)))))
-  )
+    (symbol-name (nth n (car (read-from-string
+                              (buffer-substring beg end)))))))
 
 (layer test layers--get-nth-sexpr
   (-map (lambda (ol) (layers--get-nth-sexpr (overlay-start ol) 2))
@@ -123,16 +152,40 @@ of the correct type is already there."
                        (make-overlay beg (scan-sexps beg 1) ; or make a new one
                                      (current-buffer) t nil))))
       (overlay-put overlay 'layer-label label)
-      ;; (overlay-put overlay 'priority 1000000)
       overlay)))
 
-(defun layers--get-layers-by-label (label)
-  (-filter (lambda (ol)
-             (eq (overlay-get ol 'layer-label) (layers--label label)))
-           (overlays-in (point-min) (point-max))))
+;; (defun p-or (&rest preds)
+;;   (lambda (e)
+;;     (-any? #'identity (-map (lambda (pred)
+;;                               (funcall pred e))
+;;                             preds))))
+
+;; (layer spec layers--get-layers-by-label
+;;   (((p-or stringp symbolp)) -> (overlayp ...))
+;;   (lambda (r)
+;;     (-each r
+;;       (lambda (ol)
+;;         (overlay-get 'layer)))))
 
 (defun layers--input-label ()
   (layers--label (completing-read "Layer: " layer-labels)))
+
+(defun layers--construct-summary-string (label symbol)
+  (let* ((->string (lambda (var) (if (stringp var) var
+                                   (symbol-name var))))
+         (label (funcall ->string label))
+         (symbol (funcall ->string symbol)))
+    (if layers-colored-summaries
+        (concat (propertize  "(" 'font-lock-face 'italic)
+                (propertize label 'font-lock-face
+                            '(italic font-lock-keyword-face))
+                " "
+                (propertize symbol 'font-lock-face
+                            '(italic font-lock-function-name-face))
+                (propertize  " ...)" 'font-lock-face 'italic))
+      (propertize (concat "(" label " "
+                          symbol " ...)")
+                  'font-lock-face 'font-lock-comment-face))))
 
 (defun layers-hide-layer (label)
   ;; (interactive (layers--input-label)) 
@@ -141,8 +194,7 @@ of the correct type is already there."
       (let ((symbol (layers--get-macro-symbol ol)))
         (overlay-put ol 'invisible t)
         (overlay-put ol 'before-string
-                     (concat "(" (symbol-name label) " "
-                             symbol " ...)"))))))
+                     (layers--construct-summary-string label symbol))))))
 
 (defun layers-show-layer (label)
   ;; (interactive (layers--input-label))
@@ -173,9 +225,8 @@ layer macros in the buffer."
             (push beg layer-positions))))
       layer-positions)))
 
-(layers--find-layers)
-
 (defun layers--update-overlays (&rest _)
+  ;; todo: locality optimization
   (-each (layers--find-layers)
     #'layers--put-overlay-on-sexpr))
 
@@ -189,9 +240,6 @@ layer macros in the buffer."
   (-each (-filter (lambda (ol)
                     (overlay-get ol 'layer-label))
                   (overlays-in (point-min) (point-max)))
-    (lambda (ol)
-      (delete-overlay ol)))
+         (lambda (ol)
+           (delete-overlay ol)))
   'done)
-
-;; (layers--tear-down)
-;; (layers--initialize)
