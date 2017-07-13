@@ -1,8 +1,5 @@
 ;;; layers-test.el --- ... -*- lexical-binding: t; -*-
 
-;; grab specs and tests -> expand them with defined macros
-;;  -> put them together in a file
-
 ;; general idea:
 ;;  - command: extract-layers test
 ;;  - prompt for macro or default
@@ -20,33 +17,19 @@ for the function.")
 
 (defcustom layers-spec-macro 'layers-elisp-default-spec-macro)
 
-;; (defun layers-tangle-layer (label filename)
-;;   (interactive (list (layers--input-label) (layers--input-filename)))
-;;   (write-region (apply #'concat
-;;                        (-interpose
-;;                         (string ?\n)
-;;                         (-map (lambda (ol)
-;;                                 (let ((beg (overlay-start ol))
-;;                                       (end (overlay-end ol)))
-;;                                   (with-output-to-string
-;;                                     (pp
-;;                                      (macroexpand
-;;                                       (car (read-from-string
-;;                                             (buffer-substring beg end))))))))
-;;                               (nreverse (layers--get-overlays-by-label label)))))
-;;                 nil filename))
-
 (defun layers--apply-expansion ()
   (lambda (code-string)
     (with-output-to-string
       ;; how should this macro be defined?
       (pp (macroexpand (car (read-from-string code-string)))))))
 
+;; these are called by layer-macro. Maybe put them in that file?
 (defmacro layers-default-elisp-test-macro (symbol body)
+  ;; TODO: use ERT
   (cons 'list
         (-map
          (lambda (expr)
-           (if (member '-> expr) ; (a -> b) special form
+           (if (member '-> expr)        ; (a -> b) special form
                (let ((given (first expr))
                      (expected (car (last expr))))
                  `(not (assert (equal ,expected
@@ -83,14 +66,15 @@ for the function.")
                      r)
                    '((name . aspec))))))
 
-;; return expanded strings?
 (defun layers-extract-tests (filename)
   (interactive (list (layers--input-filename)))
   (let ((source-buffer (current-buffer))
-        (target-buffer (generate-new-buffer filename)))
+        (target-buffer (generate-new-buffer filename))
+        (test-layers (nreverse (layers--get-strings-by-label 'test)))
+        (spec-layers (nreverse (layers--get-strings-by-label 'spec))))
     ;; put setup boilerplate here
-    (-each (-map #'layers-apply-expansion
-                 (nreverse (layers--get-strings-by-label label)))
+    ;; put spec setup here
+    (-each (-map #'layers-apply-expansion test-layers)
       (lambda (test)
         (with-current-buffer target-buffer
           (insert (concat test (string ?\n))))))
