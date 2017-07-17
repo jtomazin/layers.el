@@ -1,0 +1,118 @@
+* Big Ideas
+** Layers help you and the computer understand code better
+- specs, tests, and docs help people understand and machines check
+- specs, type info, and other metadata should inform the
+  interpreter/compiler
+** Layers make writing and reading code an easier, more unified process
+** Layered programs can be transformed into unlayered programs
+
+* <2017-07-14 Fri>
+** Ideas:
+** System vs Discipline?
+- Architecture is implicit rn
+- Backbone should be simple, guts can be complicated
+- I should try writing a complicated program with a simple backbone
+- maybe just write an IR for a layered program system and do some
+  exploratory programming
+
+** ADLs
+- [[https://en.wikipedia.org/wiki/Architecture_description_language][wikipedia]]
+- just because ADLs haven't really caught on doesn't mean they're a
+  bad idea, esp. as evidenced by the number of them
+** 
+** [[https://www.youtube.com/watch?v=_ahvzDzKdB0][Guy Steele: Growing a Language]]
+- [[https://www.cs.virginia.edu/~evans/cs655/readings/steele.pdf][PDF version]]
+- Languages (and really design in general) should have a plan for how
+  to grow, not just a plan for the language. Somewhere between a
+  cathedral and bazaar; a shopping mall. Provide primitives and allow
+  users to make more complicated things that look the same as the
+  primitives.
+- The implications for this project are that layers should be easily
+  extensible for users
+* <2017-07-13 Thu>
+** Intermediate Representation for Layered Programming
+It could be beneficial to parse layered programs into an especially
+rich IR, which can then be deconstructed into other parts as
+necessary. I write a layered program that has layers specifying tests,
+specs, documentation, and types. Then, the LP system reads my source
+files and creates a rich IR. By associating the separate layers
+together, the system is able to glean more information about each
+part. For example, using the structure of the intermediate
+representation to make more cohesive documentation; combining tests,
+specs, and generative tests; <others>. I can then specify behavior for
+how I want my target files (e.g., html docs, machine-readable code,
+etc) to be tangled out of the IR.
+** Readings:
+[[https://dl.acm.org/citation.cfm?id=1993514][Languages as Libraries]] (Racket)
+[[http://www.cs.utah.edu/plt/publications/macromod.pdf][Composable and Compilable Macros]] (Racket)
+[[http://repository.upenn.edu/cgi/viewcontent.cgi?article=1597&context=cis_papers][Formalizing LLVM IR]] (maybe)
+** More Monads:
+[[http://www.clojure.net/2012/02/13/Maybe/][Excellent Clojure monad tutorial]]
+
+* <2017-07-12 Wed>
+** Today's Reading:
+*** [[https://dl.acm.org/citation.cfm?id=1993514][Languages as Libraries]]
+- Describes Racket's language-building qualities, implements Typed
+  Racket
+*** [[http://www.greghendershott.com/fear-of-macros/index.html][Racket Macros]]
+- Gives access to the AST itself (which Racket just calls /syntax/) and
+  allows you to annotate it however you want (e.g., with types)
+- "context-sensitive", which is incredibly cool. From SO: Racket
+  provides overrideable context-sensitive macros such as ~#%app~,
+  ~#%module-begin~, and so on that allow customization of, say, every
+  function application within a module or of the entire module. This
+  allows adding, for example, a type-checking pass over the entire
+  module.
+** Monads and Continuations (for general education):
+- Haskell is unique in that it can dispatch on the type of a
+  continuation
+- I just spent like 2 hours learning about monads today (partially
+  successfully)
+
+* <2017-07-11 Tue>
+** TODO Figure out how core.typed works (esp. =t/ann= macro)
+** Core.typed:
+- complicated, large. little progress
+** Typed Racket:
+- [[https://github.com/racket/typed-racket][Github]]
+- Has a (optional) type checker and performance optimizations
+** Discoveries:
+- [[http://people.cs.ubc.ca/~gregor/][Gregor Kiczales]]
+** Internal Representation Ideas
+- GCC and LLVM are really cool but perhaps not the IR that I'm
+  thinking about
+- Programmer's Apprentice has some cool data flow ideas
+** Thoughts:
+*** PA w/ Layers
+- would be too complicated outright. However, ideas about
+  representation of design/architecture/dataflow might be useful
+
+* <2017-07-10 Mon> 
+** DONE Set up engineering log
+** Current Obstacle: Provide functionality without imposing restrictions
+Right now, each layer provides some reasonable behavior. How can I
+allow users to easily customize that behavior and define their own
+behaviors and layers?
+** Today's Reading:
+*** [[ftp://publications.ai.mit.edu/ai-publications/pdf/AITR-354.pdf][Initial Report on a LISP Programmer's Assistant]]
+- Does the difficulty stem from NLP or the internal rep? If NLP, then
+  we can still "program" the assistant's understanding with layers
+- NLP is still challenging and doesn't encourage transparency of
+  representation because NL is complex and ambiguous; IMO a big reason
+  why a Programmer's Assistant didn't get further
+- NL is necessary to have conversation; something else is required in
+  its' place [[https://en.wikipedia.org/wiki/Software_architecture][Software Architecture]]
+- Big Idea: \exist languages for architecture -> \exist abstract reps of
+  architecture
+*** [[https://pdfs.semanticscholar.org/07b5/970636e20a135cb7f52677aad92d2aa6d8f4.pdf][From the Programmer’s Apprentice to Human-Robot Interaction]] 
+- Really good bibliography
+** Ideas:
+*** Architecture Design Language (ADL) Layer
+an ADL layer would allow the programmer to discuss the architecture of
+her modules.
+*** Lisp Programmer's Assistant w/ Layers instead of NLP
+A system that understands the code itself, any annotations added, and
+the structure/architecture of the system
+** Things to do later:
+[[http://ieeexplore.ieee.org/document/43053/][Recognizing a Program's Design]] [[https://link.springer.com/chapter/10.1007%252F978-1-4612-5196-5_9][A Formal Representation for Plans in
+the PA]]

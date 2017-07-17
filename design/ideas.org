@@ -58,8 +58,6 @@ How to reuse function from a different layer or branch?
     (send
      (process
       (receive-request))))
-
-  ;; (overlays-in 0 (point-max))
 #+END_SRC
 
 #+BEGIN_SRC elisp
