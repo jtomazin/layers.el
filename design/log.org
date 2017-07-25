@@ -6,10 +6,13 @@
 ** Layers make writing and reading code an easier, more unified process
 ** Layered programs can be transformed into unlayered programs
 
+* <2017-07-17 Mon>
+
+
 * <2017-07-14 Fri>
 ** Ideas:
-** System vs Discipline?
-- Architecture is implicit rn
+- System vs Discipline?
+- Architecture is implicit in current systems
 - Backbone should be simple, guts can be complicated
 - I should try writing a complicated program with a simple backbone
 - maybe just write an IR for a layered program system and do some
