@@ -1,5 +1,7 @@
 #lang racket
 
+(provide read-file)
+
 ;; kludge
 (define (strip-lang-decl port)
   (letrec ([read-stream (lambda () (stream-cons (read-line port 'any)
