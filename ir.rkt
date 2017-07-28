@@ -1,13 +1,22 @@
 #lang racket
 
 (require "read-file.rkt")
-;; game plan: implement predicates for the special forms that GJS uses in
-;;  his type checker; make node types for each predicate; parse and analyze
-;;  them
+;; game plan: implement predicates for the special forms that GJS uses
+;;  in his type checker; make node types for each predicate; parse and
+;;  analyze them
 
 ;;; FIXME:
-;;  [ ] doesn't work for implicit begin (e.g., multiple exprs in a lambda)
+;;  [ ] doesn't work for implicit begin (e.g., multiple exprs in a
+;;  lambda)
 ;;  [ ] doesn't handle layers in car position (for similar reasons)
+
+;; Considerations:
+;;  - layer is kind of like define
+;;  - how to manipulate environment in a define? (w/o mutation)
+
+;; Sketch of flow analysis:
+;;  - given an entry point function, identify the inputs
+;;  - follow the transformation of each variable
 
 (define pp pretty-print)
 
@@ -180,13 +189,14 @@
                      subexprs))
                env)))
 
-(define (annotate-expr expr env)
+(define (annotate-expr expr env) 
   ((cond [(primitive-expr? expr) annotate-primitive]
          [(application-expr? expr) annotate-application]
          [(if-expr? expr) annotate-if]
          [(lambda-expr? expr) annotate-lambda]
          [(define-expr? expr) annotate-define]
-         [(begin-expr? expr) annotate-begin])
+         [(begin-expr? expr) annotate-begin]
+         [else (error "expression not recognized")]) 
    expr env))
 
 ;; layers
@@ -212,3 +222,9 @@
          '()
          '())))
 
+(node-expr (define-value (node-expr (annotate-expr '(define main
+                                                      (lambda (input1 input2)
+                                                        (fn1 input1 (fn2 input1 input2))))
+                                                   '()))))
+
+(define children cdr)
