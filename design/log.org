@@ -6,8 +6,18 @@
 ** Layers make writing and reading code an easier, more unified process
 ** Layered programs can be transformed into unlayered programs
 
-* <2017-07-17 Mon>
-
+* <2017-08-02 Wed>
+Spent the last couple weeks doing exploratory programming for
+documentation generation and learning about static analysis. 
+** Goals:
+- Work through Ch 5 in EoPL
+- write program -> graph analyzer
+** Notes:
+*** How to Write an Interpreter:
+- Create records for each special form (can use BNF spec)
+- Build up an AST using those special forms
+- parse into ast
+- process ast
 
 * <2017-07-14 Fri>
 ** Ideas:

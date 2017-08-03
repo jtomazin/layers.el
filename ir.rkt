@@ -1,6 +1,8 @@
 #lang racket
 
+(require graph)
 (require "read-file.rkt")
+(require "layer-macros.rkt")
 ;; game plan: implement predicates for the special forms that GJS uses
 ;;  in his type checker; make node types for each predicate; parse and
 ;;  analyze them
@@ -20,9 +22,6 @@
 
 (define pp pretty-print)
 
-(define-syntax-rule (layer type symbol body)
-  body)
-
 (define (layer? expr)
   (and (pair? expr)
        (eqv? (car expr) 'layer)
@@ -33,38 +32,55 @@
 (define (remove-layers exprs)
   (filter-not layer? exprs))
 
-;; for now, just keep track of the defined variables
-(define (add-to-env vars env)
-  (append (if (list? vars)
-              vars
-              (list vars))
-          env))
+;; Environment
+(struct binding (name value layers) #:transparent)
+(define empty-environment '())
+(define (env-assoc var env)
+  (cond [(empty? env) #f]
+        [(equal? (binding-name (car env)) var)
+         (car env)]
+        [else (env-assoc var (cdr env))]))
+(define add-to-env
+  (case-lambda
+    [(var env) (cons (binding var '? '()) env)]
+    [(var val env) (cons (binding var val '()) env)]))
+(define (add-layer-to-env lay env)
+  (let ([old-binding (or (env-assoc (layer-name lay) env)
+                         (binding (layer-name lay) '? '()))])
+    (cons 
+     (struct-copy binding old-binding
+                  [layers (cons lay (binding-layers old-binding))])
+     env)))
+(define (add-layers-to-env layers env)
+  (if (empty? layers)
+      env
+      (add-layers-to-env (cdr layers)
+                         (add-layer-to-env (car layers) env))))
 
-(define (associate-layers nodes layers)
-  (map (λ (node)
-         (add-layers
-          (filter (λ (layer)
-                    (eq? (node-name node)
-                         (layer-name layer)))
-                  layers)
-          node))
-       nodes))
+;; (define (associate-layers nodes layers)
+;;   (map (λ (node)
+;;          (add-layers
+;;           (filter (λ (layer)
+;;                     (eq? (node-name node)
+;;                          (layer-name layer)))
+;;                   layers)
+;;           node))
+;;        nodes))
 
-(define (node-name node)
-  (let ([expr (node-expr node)])
-    (cond [(define-expr? expr) (define-name expr)]
-          [(pair? expr) (car expr)]
-          [else expr])))
+;; (define (node-name node)
+;;   (let ([expr (node-expr node)])
+;;     (cond [(define-expr? expr) (define-name expr)]
+;;           [(pair? expr) (car expr)]
+;;           [else expr])))
 
 
 ;;; Nodes in the ir
 ;; v2 (GJS)
-(struct node (expr layers env) #:transparent)
+(struct node (expr env) #:transparent)
 (define (make-node expr env)
-  (node expr '() env))
-(define (add-layers new-layers old-node)
-  (struct-copy node old-node [layers (append new-layers
-                                             (node-layers old-node))]))
+  (node expr env))
+;; (define (add-layers var lay old-node)
+;;   (struct-copy node old-node [env (add-layer-to-env )]))
 
 ;;; Forms
 ;; primitive
@@ -91,14 +107,13 @@
 (define (annotate-application expr env)
   (let ([layers (get-layers (application-operands expr))]
         [operands (remove-layers (application-operands expr))])
-    (make-node (make-application-expr
-                (annotate-expr (application-operator expr) env) ; what if layer is in car?
-                (associate-layers
-                 (map (lambda (operand)
-                        (annotate-expr operand env))
-                      operands)
-                 layers))
-               env)))
+    (let ([new-env (add-layers-to-env layers env)])
+      (make-node (make-application-expr
+                  (annotate-expr (application-operator expr) env) ; what if layer is in car? 
+                  (map (lambda (operand)
+                         (annotate-expr operand new-env))
+                       operands))
+                 env))))
 
 ;; if
 (define (if-expr? object)
@@ -163,11 +178,11 @@
   (list 'define name value))
 
 (define (annotate-define expr env)
-  (make-node (make-define-expr (define-name expr)
-                               (annotate-expr (define-value expr)
-                                              env))
-             ;; how to modify env? 
-             (add-to-env (define-name expr) env))) ; fixme
+  (let ([new-env (add-to-env (define-name expr) env)])
+    (make-node (make-define-expr (define-name expr)
+                                 (annotate-expr (define-value expr)
+                                                new-env))
+               new-env)))
 
 ;; begin
 (define (begin-expr? object)
@@ -181,13 +196,14 @@
   (list* 'begin exprs))
 
 (define (annotate-begin expr env)
-  (let ([layers (get-layers (begin-exprs expr))]
-        [subexprs (remove-layers (begin-exprs expr))])
-    (make-node (make-begin-expr
-                (map (lambda (subexpr)
-                       (annotate-expr subexpr env))
-                     subexprs))
-               env)))
+  (let loop ([exprs (begin-exprs expr)]
+             [env env])
+    (cond [(empty? exprs) '()]
+          [(layer? (car exprs))
+           (loop (cdr exprs) (add-layer-to-env (car exprs) env))]
+          [else
+           (let ((new-node (annotate-expr (car exprs) env)))
+             (cons new-node (loop (cdr exprs) (node-env new-node))))])))
 
 (define (annotate-expr expr env) 
   ((cond [(primitive-expr? expr) annotate-primitive]
@@ -206,25 +222,33 @@
   (third layer))
 
 (layer test annotate-expr
-       (equal?
-        (annotate-expr '(f a b (c 1 2) (layer type a _)) '())
-        (node
-         (list
-          (node 'f '() '())
-          (node 'a '((layer type a _)) '())
-          (node 'b '() '())
-          (node (list
-                 (node 'c '() '())
-                 (node 1 '() '())
-                 (node 2 '() '()))
-                '()
-                '()))
-         '()
-         '())))
+       (annotate-expr '(f a b (c 1 2) (layer type a _)) empty-environment))
 
-(node-expr (define-value (node-expr (annotate-expr '(define main
-                                                      (lambda (input1 input2)
-                                                        (fn1 input1 (fn2 input1 input2))))
-                                                   '()))))
 
-(define children cdr)
+;; (struct vertex (name children) #:transparent)
+;; (define (node->vertex node)
+;;   (if (node? node)
+;;       (if (list? (node-expr node))
+;;           (vertex (car (node-expr node))
+;;                   (map node->vertex (cdr (node-expr node))))
+;;           (vertex (node-expr node) '()))
+;;       (vertex node '())))
+
+(define (ir->graph node)
+  (let ([g (directed-graph '())])
+    (let loop ([expr (node-expr node)])
+      (cond [(application-expr? expr)   ; (f x y) 
+             (add-vertex! g )]
+            [(lambda-expr? expr)        ; (lambda (a b) ...)
+             ()]))))
+
+(define fib-program
+  '(define fib
+     (lambda (n)
+       (if (< n 2)
+           n
+           (+ (fib (- n 1))
+              (fib (- n 2)))))))
+
+(node->vertex (annotate-expr fib-program empty-environment))
+
