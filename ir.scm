@@ -1,46 +1,15 @@
 (load "ghelper")
 
 ;;; Parse is a generic operator, with a handler for each form
-(define parse (make-generic-operator 2 'parse))
+(define parse (make-generic-operator 1 'parse))
 
-(define (parse-subexprs subexprs env)
-  (map (lambda (exp) (parse exp env)) subexprs))
-
-;;; useful predicates...
-(define any-object? (lambda (o) #t))
-(define (list-of-symbols? o) (and (list? o)
-                                  (every symbol? o)))
-
-;;; Environment
-(define environment? alist?)
-(define empty-environment '())
-(define extend-env (make-generic-operator 3 'extend-env))
-
-(defhandler extend-env
-  (lambda (vars vals env)
-    (unless (= (count vars) (count vals))
-            (error "Number of variables and values must match"))
-    (append (map cons vars vals) env))
-  list-of-symbols? list? environment?)
-(defhandler extend-env
-  (lambda (var val env)
-    (extend-env (list var) (list val) env))
-  symbol? any-object? environment?)
+(define (parse-subexprs subexprs)
+  (map (lambda (exp) (parse exp)) subexprs))
 
 ;;; Forms
 (define special-forms
   ;; todo: add records/structs later
   '(lambda if define begin do let quote set!))
-
-;; variables
-(define-record <var>
-  (make-var name)
-  var?
-  (name var-name))
-(define variable-expr? symbol?)
-(define (parse-var expr env)
-  (make-var expr))
-(defhandler parse parse-var var? environment?)
 
 ;; literals
 (define-record-type <lit>
@@ -52,9 +21,19 @@
                              ;; (string? expr)
                              ;; (char? expr)
                              ))
-(define (parse-lit expr env)
+(define (parse-lit expr)
   (make-lit expr))
-(defhandler parse parse-lit lit-expr? environment?)
+(defhandler parse parse-lit lit-expr?)
+
+;; variables
+(define-record <var>
+  (make-var name)
+  var?
+  (name var-name))
+(define variable-expr? symbol?)
+(define (parse-var expr)
+  (make-var expr))
+(defhandler parse parse-var var?)
 
 ;; (operator rand1 rand2 ...)
 (define-record-type <app>
@@ -64,25 +43,23 @@
   (rands app-rands))
 (define (app-expr? expr) (and (pair? expr)
                               (not (member (car expr) special-forms))))
-(define (parse-app expr env)
-  (make-app (car expr) (parse-subexprs (cdr expr) env)))
-(defhandler parse parse-app app-expr? environment?)
+(define (parse-app expr)
+  (make-app (car expr) (parse-subexprs (cdr expr))))
+(defhandler parse parse-app app-expr?)
 
 ;; (lambda (formals) body)
 (define-record-type <lambda>
-  (make-lambda formals body env)
+  (make-lambda formals body)
   lambda?
   (formals lambda-formals)
-  (body lambda-body)
-  (env lambda-env))
+  (body lambda-body))
 (define (lambda-expr? expr) (eq? (car expr) 'lambda))
-(define (parse-lambda expr env)
+(define (parse-lambda expr)
   (let ((formals (second expr))
         (body (cddr expr)))
     (make-lambda formals
-                 env ;; ???
                  body)))
-(defhandler parse parse-lambda lambda-expr? environment?)
+(defhandler parse parse-lambda lambda-expr?)
 
 ;; (if pred consq alt)
 (define-record-type <if>
@@ -92,11 +69,11 @@
   (consq if-consq)
   (alt if-alt))
 (define (if-expr? expr) (eq? (car expr) 'if))
-(define (parse-if expr env)
-  (make-if (parse (second expr) env)
-           (parse (third expr) env)
-           (parse (fourth expr) env)))
-(defhandler parse parse-if if-expr? environment?)
+(define (parse-if expr)
+  (make-if (parse (second expr))
+           (parse (third expr))
+           (parse (fourth expr))))
+(defhandler parse parse-if if-expr?)
 
 ;; (define var expr)
 (define-record-type <define>
@@ -105,10 +82,10 @@
   (var define-var)
   (expr define-expr))
 (define define-expr? (eq? (car expr) 'define))
-(define (parse-define expr env)
+(define (parse-define expr)
   (make-define (second expr)
-               (parse (third expr) env)))
-(defhandler parse parse-define define-expr? environment?)
+               (parse (third expr))))
+(defhandler parse parse-define define-expr?)
 
 ;; let
 (define-record-type <let>
@@ -117,22 +94,19 @@
   (decls let-decls)
   (body let-body))
 (define let-expr? (eq? (car expr) 'let))
-(define (parse-let expr env)
+(define (parse-let expr)
   (make-let (map (lambda (dec)
-                   (parse-decl-for-let dec env))
+                   (parse-decl-for-let dec))
                  (second expr))
-            (parse-subexprs (cddr expr) env)))
-(defhandler parse parse-let let-expr? environment?)
+            (parse-subexprs (cddr expr))))
+(defhandler parse parse-let let-expr?)
 
 (define-record <decl>
   (make-decl var expr)
   decl?
   (var decl-var)
   (expr decl-expr))
-(define (parse-decl-for-let expr env)
-  (make-decl (first expr) (parse (second expr) env)))
+(define (parse-decl-for-let expr)
+  (make-decl (first expr) (parse (second expr))))
 
 ;; top level vs internal definitions?
-
-(define (eval-expr expr env)
-  )
