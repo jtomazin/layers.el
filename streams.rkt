@@ -1,3 +1,5 @@
+#lang racket
+
 (define/contract (stream-take num strm)
   (-> exact-nonnegative-integer? stream? stream?)
   (if (= num 0)
