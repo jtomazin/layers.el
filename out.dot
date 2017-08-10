@@ -1,0 +1,8 @@
+strict digraph {
+b;
+d;
+c;
+a;
+b -> d;
+b -> c;
+}

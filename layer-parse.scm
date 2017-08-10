@@ -1,4 +1,27 @@
 (load "ghelper")
+;;; Parse a layered program into an annotated AST
+;; Informal Grammar:
+;; <layer> := (: <name> <layer type> <layer body>)
+;; <name> := <symbol>
+;; <layer type> := test | doc | spec | ...
+;; <layer body> := /depends on layer-type/
+;;
+;; <layered-app> := (<rator> <rand or layer>*)
+;; <rator> := <expr>
+;; <rand or layer> := <expr> | <layer>
+;; 
+;; <layered-lambda> := (lambda <formals> <layered body>)
+;; <formals> := (<var>*)
+;; <layered body> := <expr or layer>*
+;; <expr or layer> := <expr> | <layer>
+;; 
+;; <layered-if> := (if <expr> <expr> <layered body>)
+;;
+;; <layered-let> := (let (<layered bindings>) <layered body>)
+;; <layered bindings> := (<var> <layer>* <expr> <layer>*)
+
+(define (layer? expr) (and (list? expr)
+                           (equal? (car expr) ':)))
 
 ;;; Parse is a generic operator, with a handler for each form
 (define parse (make-generic-operator 1 'parse))
@@ -41,14 +64,17 @@
 
 ;; (operator rand1 rand2 ...)
 (define-record-type <app>
-  (make-app rator rands)
+  (make-app rator rands layers)
   app?
   (rator app-rator)
-  (rands app-rands))
+  (rands app-rands)
+  (layers layers))
 (define (app-expr? expr) (and (pair? expr)
                               (not (member (car expr) special-forms))))
 (define (parse-app expr)
-  (make-app (parse (car expr)) (parse-subexprs (cdr expr))))
+  (make-app (parse (car expr))
+            (parse-subexprs (remove layer? (cdr expr)))
+            (filter layer? (cdr expr))))
 (defhandler parse parse-app app-expr?)
 (defhandler unparse
   (lambda (expr)
@@ -57,16 +83,18 @@
 
 ;; (lambda (formals) body)
 (define-record-type <lambda>
-  (make-lambda formals body)
+  (make-lambda formals body layers)
   lambda?
-  (formals lambda-formals)
-  (body lambda-body))
+  (formals lambda-formals) 
+  (body lambda-body)
+  (layers layers))
 (define (lambda-expr? expr) (and (pair? expr) (eq? (car expr) 'lambda)))
 (define (parse-lambda expr)
   (let ((formals (second expr))
         (body (cddr expr)))
     (make-lambda formals
-                 (parse-subexprs body))))
+                 (parse-subexprs (remove layer? body))
+                 (filter layer? body))))
 (defhandler parse parse-lambda lambda-expr?)
 (defhandler unparse
   (lambda (expr)
@@ -75,16 +103,18 @@
 
 ;; (if pred consq alt)
 (define-record-type <if>
-  (make-if pred consq alt)
+  (make-if pred consq alt layers)
   if?
   (pred if-pred)
   (consq if-consq)
-  (alt if-alt))
+  (alt if-alt)
+  (layers layers))
 (define (if-expr? expr) (and (pair? expr) (eq? (car expr) 'if)))
 (define (parse-if expr)
   (make-if (parse (second expr))
            (parse (third expr))
-           (parse (fourth expr))))
+           (parse (remove layer? (cdddr expr)))
+           (filter layer? (cdddr exrp))))
 (defhandler parse parse-if if-expr?)
 (defhandler unparse
   (lambda (expr)
@@ -120,8 +150,7 @@
   (make-let (map (lambda (dec)
                    (parse-decl-for-let dec))
                  (second expr))
-            (parse-subexprs (cddr expr))
-            ))
+            (parse-subexprs (cddr expr))))
 (defhandler parse parse-let let-expr?)
 (defhandler unparse
   (lambda (expr)

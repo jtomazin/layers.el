@@ -47,7 +47,7 @@
   (body closure-body)
   (env closure-env))
 
-;;; Evaluation 
+;;; Evaluating into graph
 (define make-graph (make-generic-operator 2 'make-graph))
 
 (define (eval-subexprs subexprs env)
@@ -74,15 +74,15 @@
 
 ;; application
 (defhandler make-graph
-  (lambda (expr env)
-    (let ((proc (make-graph (app-rator expr) env))
+  (lambda (expr env) 
+    (let ((proc (make-vertex (make-graph (app-rator expr) env)))
           (args (map (lambda (arg)
-                       (make-graph arg env))
+                       (make-vertex (make-graph arg env)))
                      (app-rands expr))))
-      (fold-left (lambda (arg)
-                   (add-edge (vertex-name arg) (vertex-name proc)))
-                 empty-graph
-                 args)
+      ;; add edges from every arg to the proc 
+      (cons proc (map (lambda (arg)
+                        (vertex-add-edge arg (make-edge arg proc))) 
+                      args))
       ;; (apply-proc proc args)
       ))
   app? environment?)
@@ -100,7 +100,7 @@
   (lambda (expr env)
     (if (make-graph (if-pred expr) env)
         (make-graph (if-consq expr) env)
-        (make-graph (if-alt expr) env)))
+        (map (lambda (e) (make-graph e env)) (if-alt expr))))
   if? environment?)
 
 ;; define
@@ -121,9 +121,7 @@
 
 ;;; Apply
 (define apply-proc
-  (make-generic-operator 2 'eval-proc
-                         (lambda (a b)
-                           (error "apply-proc: No handler for" a b))))
+  (make-generic-operator 2 'eval-proc))
 
 (define (primitive-proc? op)
   (member op primitive-procs))
@@ -142,7 +140,7 @@
   closure? list?)
 
 ;; tests
-
+#|
 (make-graph (parse '((lambda (f1)
                        (f1 f1 9))
                      (lambda (f n)
@@ -161,3 +159,5 @@
                          (- x y)))
                      (list 3 4)))
             base-env)
+|#
+;; (make-graph (parse '(+ (* a b) (* b c))) base-env)
